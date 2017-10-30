@@ -2,6 +2,12 @@ const bodyParser = require('body-parser');
 const express = require('express');
 const session = require('express-session');
 const bcrypt = require('bcrypt');
+const cors = require('cors');
+
+const corsOptions = {
+  origin: 'http://localhost:5000',
+  credentials: true
+};
 
 const User = require('./user.js');
 
@@ -41,7 +47,7 @@ server.use((req, res, next) => {
     return next();
   }
   // check time
-  if ( req.session.user.expires <= Date.now() ) {
+  if (req.session.user.expires <= Date.now()) {
     delete req.session.user;
   } else {
     req.session.user.expires = Date.now() + (1000 * 50 * 5);
@@ -49,6 +55,12 @@ server.use((req, res, next) => {
   next();
 });
 
+
+// Global Middleware to catch anything within the `/restricted` path
+server.use('/restricted', (req, res, next) => {
+  if (!req.session.user || !req.session.user.username) return res.status(401).json({ error: 'Unauthorized access', message: 'You are not logged in or do not have the correct privileges to access this resource.' });
+  next();
+});
 
 server.post('/users', (req, res) => {
   const { username, password } = req.body;
@@ -58,7 +70,7 @@ server.post('/users', (req, res) => {
   // Start hashing
   bcrypt.hash(password, BCRYPT_COST, (err, hash) => {
     // catch err
-      if (err) return sendUserError('Error processing. Please try again', res);
+    if (err) return sendUserError('Error processing. Please try again', res);
     // Make new user
     const newUser = new User({ username, passwordHash: hash });
     // save
@@ -74,13 +86,13 @@ server.post('/users', (req, res) => {
 });
 
 
-server.post('/log-in', (req, res) => {
+server.post('/login', (req, res) => {
   // get username and password from the request
   const { username, password } = req.body;
   // get user from session
   const { user } = req.session;
   // if the username or password from the request is missing...
-  if (!username, !password) return sendUserError('undefined: username || password', res);
+  if (!username || !password) return sendUserError('undefined: username || password', res);
   // get hashed password
   User.findOne({ username })
   .then((u) => {
@@ -96,12 +108,19 @@ server.post('/log-in', (req, res) => {
       // If password mismatch
       if (result === false) return sendUserError({ success: result, message: 'wrong password' }, res);
       // Set session
-      req.session.user = { username, expires: Date.now() + (1000 * 60 * 5)  };
+      req.session.user = { username, expires: Date.now() + (1000 * 60 * 5) };
       // Send result
       res.json({ success: result });
     });
   })
   .catch(err => sendUserError(err, res));
+});
+
+
+// Logout
+server.get('/logout', (req, res) => {
+  delete req.session.user;
+  res.json();
 });
 
 
@@ -120,6 +139,22 @@ server.get('/me', (req, res, next) => {
 }, (req, res) => {
   // Do NOT modify this route handler in any way.
   res.json(req.user);
+});
+
+
+// Extra Credit Restricted users route
+server.get('/restricted/users', (req, res) => {
+  res.json({
+    banana: {
+      banana: {
+        banana: {
+          orange: {
+            message: "Orange you glad I didn't say banana?"
+          }
+        }
+      }
+    }
+  });
 });
 
 module.exports = { server };

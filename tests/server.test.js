@@ -13,7 +13,7 @@ const METHOD_GET = 'GET';
 const METHOD_POST = 'POST';
 
 const USERS_PATH = '/users';
-const LOG_IN_PATH = '/log-in';
+const LOG_IN_PATH = '/login';
 const ME_PATH = '/me';
 
 // allows us to make and test HTTP requests
